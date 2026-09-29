@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Batalha Real</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>♠ Batalha Real ♥</h1>
+    <div class="topbar-actions">
+      <button id="btn-rules" class="btn btn-ghost" type="button">Regras</button>
+      <button id="btn-new" class="btn btn-ghost" type="button">Novo jogo</button>
+    </div>
+  </header>
+
+  <main class="board">
+    <section class="player-area opponent" id="area-ai">
+      <div class="player-info">
+        <span class="player-name">Máquina <span class="role" id="role-ai"></span></span>
+        <div class="damage-meter"><div class="damage-fill" id="meter-ai"></div></div>
+        <span class="damage-text">Dano: <strong id="dmg-ai">0</strong>/30</span>
+      </div>
+      <div class="hand hand-hidden" id="hand-ai"></div>
+      <div class="damage-zone">
+        <span class="zone-label">Área de dano</span>
+        <div class="damage-cards" id="damage-ai"></div>
+      </div>
+    </section>
+
+    <section class="table">
+      <div class="pile">
+        <div class="card back" id="deck-pile"></div>
+        <span class="pile-label">Monte: <strong id="deck-count">0</strong></span>
+      </div>
+
+      <div class="battlefield">
+        <div class="slot">
+          <span class="zone-label" id="label-attack">Ataque</span>
+          <div class="slot-cards" id="slot-attack"></div>
+        </div>
+        <div class="versus">VS</div>
+        <div class="slot">
+          <span class="zone-label" id="label-defense">Defesa</span>
+          <div class="slot-cards" id="slot-defense"></div>
+        </div>
+      </div>
+
+      <div class="pile">
+        <div class="discard-pile" id="discard-pile"></div>
+        <span class="pile-label">Descarte: <strong id="discard-count">0</strong></span>
+      </div>
+    </section>
+
+    <div class="status" id="status" role="status" aria-live="polite"></div>
+
+    <section class="block-panel hidden" id="block-panel">
+      <h2 id="block-title">Distribua seus ouros</h2>
+      <p class="hint" id="block-hint"></p>
+      <div id="block-rows"></div>
+      <button class="btn" id="btn-block" type="button">Confirmar defesa</button>
+    </section>
+
+    <section class="player-area me" id="area-human">
+      <div class="damage-zone">
+        <span class="zone-label">Área de dano</span>
+        <div class="damage-cards" id="damage-human"></div>
+      </div>
+      <div class="hand" id="hand-human"></div>
+      <div class="player-info">
+        <span class="player-name">Você <span class="role" id="role-human"></span></span>
+        <div class="damage-meter"><div class="damage-fill" id="meter-human"></div></div>
+        <span class="damage-text">Dano: <strong id="dmg-human">0</strong>/30</span>
+        <button class="btn" id="btn-play" type="button" disabled>Jogar</button>
+      </div>
+    </section>
+
+    <aside class="log">
+      <h2>Histórico</h2>
+      <ol id="log"></ol>
+    </aside>
+  </main>
+
+  <div class="modal hidden" id="modal">
+    <div class="modal-box">
+      <h2 id="modal-title"></h2>
+      <div id="modal-body"></div>
+      <button class="btn" id="modal-ok" type="button">OK</button>
+    </div>
+  </div>
+
+  <template id="rules-template">
+    <div class="rules">
+      <p>Você enfrenta a máquina. Vence quem causar <strong>30 pontos de dano</strong> primeiro no oponente.</p>
+      <ul class="suits">
+        <li><span class="black">♠ Espadas</span> — ataque</li>
+        <li><span class="black">♣ Paus</span> — contra-ataque</li>
+        <li><span class="red">♦ Ouros</span> — defesa</li>
+        <li><span class="red">♥ Copas</span> — recuperação</li>
+      </ul>
+      <p>Valores: A=1, 2–10, J=11, Q=12, K=13. O dano é a soma das cartas na área de dano.</p>
+      <h3>Início</h3>
+      <p>Cada jogador puxa 7 cartas e revela a última. A maior começa como <em>atacante</em>; em caso de empate de número vale o naipe: ♠ &gt; ♣ &gt; ♦ &gt; ♥.</p>
+      <h3>Rodada</h3>
+      <ol>
+        <li>O atacante coloca 1 ou 2 cartas viradas para baixo.</li>
+        <li>O defensor coloca 1 ou 2 cartas viradas para cima.</li>
+        <li>As cartas do atacante são reveladas e quem tem ouros escolhe o que cada ouro bloqueia (pode somar dois ouros contra uma carta).</li>
+      </ol>
+      <h3>Resolução</h3>
+      <ul>
+        <li><strong>♠ do atacante x ♦ do defensor:</strong> espada maior → vai para a área de dano do defensor; senão ambas são descartadas. Espada sem bloqueio causa dano direto.</li>
+        <li><strong>♣ do defensor x ♦ do atacante:</strong> mesma regra; paus maior → vai para a área de dano do atacante. Paus sem bloqueio causa dano direto.</li>
+        <li>♣ do atacante e ♠ do defensor são descartadas.</li>
+        <li><strong>♥ Copas:</strong> sem dano, é descartada. Com dano, remove cartas da sua área de dano cuja soma seja menor que o valor da copas.</li>
+      </ul>
+      <h3>Fim</h3>
+      <p>Ao fim da rodada cada um completa a mão até 7 cartas e os papéis se invertem. Vence quem causar 30 de dano, ou, quando o monte acabar e alguém não conseguir ter 7 cartas, quem tiver sofrido menos dano.</p>
+    </div>
+  </template>
+
+  <script src="js/deck.js"></script>
+  <script src="js/rules.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
