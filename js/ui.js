@@ -8,24 +8,50 @@
 
   let selection = [];
   let pendingPlay = null; // { mode, resolve }
+  let current = null;     // último estado renderizado
 
-  function cardEl(card, opts) {
-    opts = opts || {};
-    const el = document.createElement('div');
-    if (opts.back) {
-      el.className = 'card back';
-      return el;
-    }
+  const ANIM_MS = 480;
+  const reduceMotion = root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Elementos persistentes das cartas em jogo (id -> elemento). Cada carta tem
+  // um único elemento que é movido entre as áreas, em vez de ser recriado.
+  const elements = new Map();
+
+  function fillFront(el, card) {
+    if (el.dataset.filled) return;
     const info = Deck.SUIT_INFO[card.suit];
-    el.className = 'card ' + info.color;
-    el.dataset.id = card.id;
-    el.title = Deck.cardLabel(card) + ' — ' + info.name + ' (' + info.role + ')';
     const rank = Deck.rankLabel(card.value);
-    el.innerHTML =
+    el.classList.add(info.color);
+    el.title = Deck.cardLabel(card) + ' — ' + info.name + ' (' + info.role + ')';
+    el.querySelector('.front').innerHTML =
       '<span class="corner">' + rank + '<br>' + info.symbol + '</span>' +
       '<span class="center">' + info.symbol + '</span>' +
       '<span class="corner bottom">' + rank + '<br>' + info.symbol + '</span>' +
       '<span class="role-tag">' + info.role + '</span>';
+    el.dataset.filled = '1';
+  }
+
+  function makeCardEl(card, faceUp) {
+    const el = document.createElement('div');
+    el.className = 'card' + (faceUp ? '' : ' face-down');
+    el.innerHTML = '<div class="card-inner"><div class="face front"></div><div class="face back"></div></div>';
+    // A face só é preenchida quando a carta é revelada, para não expor as cartas da máquina
+    if (faceUp) fillFront(el, card);
+    return el;
+  }
+
+  // Carta avulsa (modais e painel de bloqueio), fora da mesa
+  function cardEl(card) {
+    return makeCardEl(card, true);
+  }
+
+  function trackedCard(card) {
+    let el = elements.get(card.id);
+    if (!el) {
+      el = makeCardEl(card, false);
+      el.addEventListener('click', function () { onCardClick(card.id); });
+      elements.set(card.id, el);
+    }
     return el;
   }
 
@@ -34,89 +60,122 @@
     return hand.slice().sort(function (a, b) { return (order[a.suit] - order[b.suit]) || (a.value - b.value); });
   }
 
-  function renderHuman(state) {
-    const container = $('hand-human');
-    container.innerHTML = '';
-    sortHand(state.players.human.hand).forEach(function (card) {
-      const el = cardEl(card);
-      if (pendingPlay) {
-        el.classList.add('selectable');
-        if (selection.indexOf(card.id) >= 0) el.classList.add('selected');
-        el.addEventListener('click', function () { toggleSelect(card.id, state); });
+  // Onde cada carta deve estar e se fica virada para cima
+  function layout(state) {
+    const humanAttacking = state.attacker === 'human';
+    return [
+      { box: $('hand-ai'), cards: state.players.ai.hand, faceUp: false },
+      { box: $('hand-human'), cards: sortHand(state.players.human.hand), faceUp: true },
+      { box: $('damage-ai'), cards: state.players.ai.damage, faceUp: true },
+      { box: $('damage-human'), cards: state.players.human.damage, faceUp: true },
+      { box: $('slot-attack'), cards: state.table.attack, faceUp: state.revealed || humanAttacking, ownHidden: humanAttacking && !state.revealed },
+      { box: $('slot-defense'), cards: state.table.defense, faceUp: true },
+      { box: $('discard-pile'), cards: state.discard, faceUp: true }
+    ];
+  }
+
+  // Técnica FLIP: mede posições antes e depois de mover e anima a diferença
+  function placeCards(state) {
+    const first = new Map();
+    elements.forEach(function (el, id) {
+      if (el.isConnected) first.set(id, el.getBoundingClientRect());
+    });
+
+    elements.forEach(function (el) {
+      el.getAnimations().forEach(function (a) { a.cancel(); });
+    });
+
+    const seen = new Set();
+    layout(state).forEach(function (zone) {
+      zone.cards.forEach(function (card, i) {
+        const el = trackedCard(card);
+        seen.add(card.id);
+        if (zone.faceUp) fillFront(el, card);
+        el.classList.toggle('face-down', !zone.faceUp);
+        el.classList.toggle('face-down-own', !!zone.ownHidden);
+        if (zone.box.children[i] !== el) zone.box.insertBefore(el, zone.box.children[i] || null);
+      });
+    });
+
+    elements.forEach(function (el, id) {
+      if (!seen.has(id)) {
+        el.remove();
+        elements.delete(id);
       }
-      container.appendChild(el);
+    });
+
+    if (reduceMotion) return;
+    const deckRect = $('deck-pile').getBoundingClientRect();
+    let dealt = 0;
+    elements.forEach(function (el, id) {
+      const last = el.getBoundingClientRect();
+      const isNew = !first.has(id);
+      const from = isNew ? deckRect : first.get(id);
+      if (!last.width || !from.width) return;
+      const dx = from.left - last.left;
+      const dy = from.top - last.top;
+      const sx = from.width / last.width;
+      const sy = from.height / last.height;
+      if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(sx - 1) < 0.01) return;
+      el.animate([
+        { transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + sx + ',' + sy + ')', zIndex: 5 },
+        { transform: 'none', zIndex: 5 }
+      ], {
+        duration: ANIM_MS,
+        easing: 'cubic-bezier(.2,.75,.25,1)',
+        delay: isNew ? (dealt++) * 60 : 0,
+        fill: 'backwards'
+      });
     });
   }
 
-  function renderDamage(state, id) {
-    const container = $('damage-' + id);
-    container.innerHTML = '';
-    state.players[id].damage.forEach(function (card) { container.appendChild(cardEl(card)); });
-    const dmg = Rules.total(state.players[id].damage);
-    $('dmg-' + id).textContent = dmg;
-    $('meter-' + id).style.width = Math.min(100, dmg / Rules.DAMAGE_TO_WIN * 100) + '%';
+  function updateSelection() {
+    const inHand = current ? current.players.human.hand.map(function (c) { return c.id; }) : [];
+    elements.forEach(function (el, id) {
+      const selectable = !!pendingPlay && inHand.indexOf(id) >= 0;
+      el.classList.toggle('selectable', selectable);
+      el.classList.toggle('selected', selectable && selection.indexOf(id) >= 0);
+    });
   }
 
-  function renderTable(state) {
-    const attacker = state.attacker;
-    const defender = Rules.other(attacker);
-    $('label-attack').textContent = 'Ataque — ' + Rules.NAMES[attacker];
-    $('label-defense').textContent = 'Defesa — ' + Rules.NAMES[defender];
-
-    const atk = $('slot-attack');
-    atk.innerHTML = '';
-    state.table.attack.forEach(function (card) {
-      let el;
-      if (state.revealed) {
-        el = cardEl(card);
-        el.classList.add('flip');
-      } else if (attacker === 'human') {
-        el = cardEl(card);
-        el.classList.add('face-down-own');
-      } else {
-        el = cardEl(card, { back: true });
-      }
-      atk.appendChild(el);
-    });
-
-    const def = $('slot-defense');
-    def.innerHTML = '';
-    state.table.defense.forEach(function (card) { def.appendChild(cardEl(card)); });
-
-    ['human', 'ai'].forEach(function (id) {
-      const role = $('role-' + id);
-      const isAtk = id === attacker;
-      role.textContent = state.over ? '' : (isAtk ? 'Atacante' : 'Defensor');
-      role.className = 'role ' + (state.over ? '' : (isAtk ? 'attacker' : 'defender'));
-    });
+  function setText(id, text) {
+    const el = $(id);
+    if (el.textContent !== String(text)) el.textContent = text;
   }
 
   function render(state) {
-    const aiHand = $('hand-ai');
-    aiHand.innerHTML = '';
-    state.players.ai.hand.forEach(function () { aiHand.appendChild(cardEl(null, { back: true })); });
-    renderHuman(state);
-    renderDamage(state, 'human');
-    renderDamage(state, 'ai');
-    renderTable(state);
+    current = state;
+    placeCards(state);
+    updateSelection();
 
-    $('deck-count').textContent = state.deck.length;
+    ['human', 'ai'].forEach(function (id) {
+      const dmg = Rules.total(state.players[id].damage);
+      setText('dmg-' + id, dmg);
+      $('meter-' + id).style.width = Math.min(100, dmg / Rules.DAMAGE_TO_WIN * 100) + '%';
+      const role = $('role-' + id);
+      const isAtk = id === state.attacker;
+      setText('role-' + id, state.over ? '' : (isAtk ? 'Atacante' : 'Defensor'));
+      role.className = 'role ' + (state.over ? '' : (isAtk ? 'attacker' : 'defender'));
+    });
+
+    setText('label-attack', 'Ataque — ' + Rules.NAMES[state.attacker]);
+    setText('label-defense', 'Defesa — ' + Rules.NAMES[Rules.other(state.attacker)]);
+    setText('deck-count', state.deck.length);
     $('deck-pile').style.visibility = state.deck.length ? 'visible' : 'hidden';
-    $('discard-count').textContent = state.discard.length;
-    const discard = $('discard-pile');
-    discard.innerHTML = '';
-    if (state.discard.length) discard.appendChild(cardEl(state.discard[state.discard.length - 1]));
+    setText('discard-count', state.discard.length);
 
     $('area-human').classList.toggle('active', !!pendingPlay);
     updatePlayButton();
   }
 
-  function toggleSelect(id, state) {
+  function onCardClick(id) {
+    if (!pendingPlay || !current) return;
+    if (!current.players.human.hand.some(function (c) { return c.id === id; })) return;
     const idx = selection.indexOf(id);
     if (idx >= 0) selection.splice(idx, 1);
     else if (selection.length < Rules.MAX_PLAY) selection.push(id);
     else selection = [selection[1], id];
-    renderHuman(state);
+    updateSelection();
     updatePlayButton();
   }
 
@@ -153,6 +212,7 @@
   function cancelPending() {
     pendingPlay = null;
     selection = [];
+    updateSelection();
     $('block-panel').classList.add('hidden');
     closeAllModals();
   }

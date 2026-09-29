@@ -15,16 +15,8 @@
     return list;
   }
 
-  // Simula a cura sequencial de uma ou mais copas
   function healValue(hearts, damage) {
-    let remaining = damage.slice();
-    let healed = 0;
-    hearts.forEach(function (h) {
-      const removed = Rules.bestHeal(remaining, h.value);
-      healed += Rules.total(removed);
-      remaining = remaining.filter(function (c) { return removed.indexOf(c) < 0; });
-    });
-    return healed;
+    return hearts.length ? Rules.total(Rules.planHeal(hearts, damage).removed) : 0;
   }
 
   function scoreAttack(combo, me, opp) {

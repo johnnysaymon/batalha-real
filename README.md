@@ -29,7 +29,7 @@ Baralho de 52 cartas. Valores: A=1, 2–10, J=11, Q=12, K=13. O dano de um jogad
    - ♠ do atacante x ♦ do defensor: se a espada for maior, vai para a área de dano do defensor (ouros descartados); senão todas são descartadas. Espada sem bloqueio causa dano direto.
    - ♣ do defensor x ♦ do atacante: mesma regra; paus maior vai para a área de dano do atacante. Paus sem bloqueio causa dano direto.
    - ♣ usado pelo atacante e ♠ usado pelo defensor são descartados.
-   - ♥ Copas (aplicada após o combate): sem dano, é descartada; com dano, remove da sua área de dano as cartas cuja soma seja menor que o valor da copas.
+   - ♥ Copas (aplicada após o combate): sem dano, é descartada; com dano, remove da sua área de dano as cartas cuja soma seja menor que o valor da copas. Com duas copas, elas também podem ser somadas para remover uma única carta de dano de valor igual ou inferior à soma (a maior possível); o jogo aplica automaticamente a opção que remove mais dano.
 5. Cada jogador completa a mão até 7 cartas (atacante primeiro) e os papéis se invertem.
 
 **Fim:** vence quem causar 30 de dano primeiro. Se o monte acabar e algum jogador não tiver 7 cartas, vence quem sofreu menos dano (igualdade = empate).

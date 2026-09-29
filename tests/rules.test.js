@@ -151,6 +151,38 @@ test('copas cura dano recebido na mesma rodada', () => {
   assert.strictEqual(s.players.human.damage.length, 0);
 });
 
+test('duas copas somadas removem a maior carta de dano ≤ soma', () => {
+  const s = baseState('human');
+  s.players.human.damage = [c('S', 9), c('C', 3)];
+  s.table.attack = [c('H', 4), c('H', 6)];
+  s.table.defense = [c('D', 1)];
+  Rules.resolveTurn(s, {});
+  // individual: 4♥ remove 3♣ (3); somadas (10) removem 9♠ (9) → escolhe a soma
+  assert.deepStrictEqual(ids(s.players.human.damage), ['C3']);
+});
+
+test('soma de copas igual ao valor da carta de dano também remove', () => {
+  const s = baseState('ai');
+  s.players.human.damage = [c('S', 9)];
+  s.table.attack = [c('D', 2)];
+  s.table.defense = [c('H', 4), c('H', 5)];
+  Rules.resolveTurn(s, {});
+  assert.strictEqual(s.players.human.damage.length, 0);
+});
+
+test('duas copas removem apenas a maior carta elegível', () => {
+  const plan = Rules.planHeal([c('H', 5), c('H', 5)], [c('S', 7), c('S', 8), c('S', 12)]);
+  assert.ok(plan.combined);
+  assert.deepStrictEqual(ids(plan.removed), ['S8']);
+});
+
+test('duas copas usam a cura individual quando ela remove mais', () => {
+  const plan = Rules.planHeal([c('H', 12), c('H', 13)], [c('S', 5), c('S', 6), c('C', 11)]);
+  // individual: 12♥ remove 11 e 13♥ remove 5+6 = 22 > soma (remove 11)
+  assert.ok(!plan.combined);
+  assert.strictEqual(Rules.total(plan.removed), 22);
+});
+
 test('bestHeal maximiza o total removido', () => {
   const healed = Rules.bestHeal([c('S', 6), c('S', 5), c('C', 3), c('C', 2)], 12);
   assert.strictEqual(Rules.total(healed), 11);

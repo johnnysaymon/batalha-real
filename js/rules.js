@@ -190,21 +190,54 @@
     });
   }
 
-  function applyHeal(state, playerId, heart, events) {
+  // Cura carta a carta: cada copas remove cartas cuja soma seja menor que seu valor
+  function sequentialHeal(hearts, damage) {
+    let remaining = damage.slice();
+    const removed = [];
+    hearts.forEach(function (h) {
+      const healed = bestHeal(remaining, h.value);
+      removed.push.apply(removed, healed);
+      remaining = remaining.filter(function (c) { return healed.indexOf(c) < 0; });
+    });
+    return removed;
+  }
+
+  // Duas copas somadas removem a maior carta de dano com valor igual ou inferior à soma
+  function combinedHeal(hearts, damage) {
+    if (hearts.length !== 2) return [];
+    const sum = total(hearts);
+    let best = null;
+    damage.forEach(function (c) {
+      if (c.value <= sum && (!best || c.value > best.value)) best = c;
+    });
+    return best ? [best] : [];
+  }
+
+  // Escolhe a forma de cura que remove mais dano
+  function planHeal(hearts, damage) {
+    const sequential = sequentialHeal(hearts, damage);
+    const combined = combinedHeal(hearts, damage);
+    if (total(combined) > total(sequential)) return { removed: combined, combined: true };
+    return { removed: sequential, combined: false };
+  }
+
+  function applyHearts(state, playerId, hearts, events) {
+    if (!hearts.length) return;
     const player = state.players[playerId];
-    state.discard.push(heart);
+    state.discard.push.apply(state.discard, hearts);
     if (player.damage.length === 0) {
-      events.push({ type: 'discard', text: label(heart) + ' de ' + NAMES[playerId] + ' descartada: não havia dano para recuperar.' });
+      events.push({ type: 'discard', text: labels(hearts) + ' de ' + NAMES[playerId] + ' descartada(s): não havia dano para recuperar.' });
       return;
     }
-    const healed = bestHeal(player.damage, heart.value);
-    if (healed.length === 0) {
-      events.push({ type: 'discard', text: label(heart) + ' de ' + NAMES[playerId] + ' não supera nenhuma carta de dano e foi descartada.' });
+    const plan = planHeal(hearts, player.damage);
+    if (plan.removed.length === 0) {
+      events.push({ type: 'discard', text: labels(hearts) + ' de ' + NAMES[playerId] + ' não supera(m) nenhuma carta de dano e foi(ram) descartada(s).' });
       return;
     }
-    player.damage = player.damage.filter(function (c) { return healed.indexOf(c) < 0; });
-    state.discard.push.apply(state.discard, healed);
-    events.push({ type: 'heal', text: label(heart) + ' recuperou ' + total(healed) + ' de dano de ' + NAMES[playerId] + ' (' + labels(healed) + ').' });
+    player.damage = player.damage.filter(function (c) { return plan.removed.indexOf(c) < 0; });
+    state.discard.push.apply(state.discard, plan.removed);
+    const source = plan.combined ? labels(hearts) + ' (soma ' + total(hearts) + ')' : labels(hearts);
+    events.push({ type: 'heal', text: source + ' recuperou ' + total(plan.removed) + ' de dano de ' + NAMES[playerId] + ' (' + labels(plan.removed) + ').' });
   }
 
   function sanitize(map, clash) {
@@ -251,8 +284,9 @@
       sanitize(blocks.attack, clashes.attack), attackerId, state, events);
 
     // Recuperação (após o combate)
-    attack.filter(function (c) { return c.suit === 'H'; }).forEach(function (c) { applyHeal(state, attackerId, c, events); });
-    defense.filter(function (c) { return c.suit === 'H'; }).forEach(function (c) { applyHeal(state, defenderId, c, events); });
+    const isHeart = function (c) { return c.suit === 'H'; };
+    applyHearts(state, attackerId, attack.filter(isHeart), events);
+    applyHearts(state, defenderId, defense.filter(isHeart), events);
 
     state.table = { attack: [], defense: [] };
     state.revealed = false;
@@ -319,6 +353,7 @@
     enumerateAssignments: enumerateAssignments,
     bestAssignment: bestAssignment,
     bestHeal: bestHeal,
+    planHeal: planHeal,
     resolveTurn: resolveTurn,
     checkEnd: checkEnd,
     endTurn: endTurn
