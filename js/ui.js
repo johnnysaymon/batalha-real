@@ -114,12 +114,13 @@
       if (!last.width || !from.width) return;
       const dx = from.left - last.left;
       const dy = from.top - last.top;
-      const sx = from.width / last.width;
-      const sy = from.height / last.height;
-      if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(sx - 1) < 0.01) return;
+      // Escala uniforme pela altura: a largura da caixa pode estar reduzida
+      // quando as cartas se sobrepõem, mas a carta desenhada mantém a proporção
+      const s = from.height / last.height;
+      if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(s - 1) < 0.01) return;
       el.animate([
-        { transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + sx + ',' + sy + ')', zIndex: 5 },
-        { transform: 'none', zIndex: 5 }
+        { transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + s + ')', transformOrigin: '0 0', zIndex: 5 },
+        { transform: 'none', transformOrigin: '0 0', zIndex: 5 }
       ], {
         duration: ANIM_MS,
         easing: 'cubic-bezier(.2,.75,.25,1)',
@@ -374,11 +375,20 @@
     return wrap;
   }
 
+  // Em telas pequenas o histórico fica num painel aberto pelo botão do topo
+  function toggleLog(open) {
+    const isOpen = typeof open === 'boolean' ? open : !document.body.classList.contains('log-open');
+    document.body.classList.toggle('log-open', isOpen);
+    $('btn-log').setAttribute('aria-expanded', String(isOpen));
+  }
+
   function init(handlers) {
     $('btn-play').addEventListener('click', confirmPlay);
     $('modal-ok').addEventListener('click', hideModal);
     $('btn-rules').addEventListener('click', showRules);
     $('btn-new').addEventListener('click', handlers.onNewGame);
+    $('btn-log').addEventListener('click', function () { toggleLog(); });
+    $('btn-log-close').addEventListener('click', function () { toggleLog(false); });
   }
 
   root.BR = root.BR || {};

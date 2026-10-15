@@ -63,6 +63,7 @@ body {
 /* ---------- Áreas dos jogadores ---------- */
 .player-area {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
   padding: 10px;
   border-radius: 12px;
@@ -80,13 +81,13 @@ body {
 .damage-text { font-size: .9rem; color: var(--muted); }
 .damage-text strong { color: var(--text); }
 
-.hand { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; min-height: calc(var(--card-h) + 16px); padding-top: 12px; }
-.hand-hidden .card { width: 44px; height: 64px; }
+.hand { display: flex; justify-content: center; gap: 6px; min-height: calc(var(--card-h) + 16px); padding-top: 12px; }
+.hand-hidden .card { --w: 44px; --h: 64px; }
 .hand-hidden { min-height: 70px; padding-top: 0; }
 
 .damage-zone { display: flex; align-items: center; gap: 10px; min-height: 48px; }
-.damage-cards { display: flex; flex-wrap: wrap; gap: 4px; }
-.damage-cards .card { width: 34px; height: 48px; font-size: .7rem; }
+.damage-cards { display: flex; gap: 4px; flex: 1; min-width: 0; }
+.damage-cards .card { --w: 34px; --h: 48px; font-size: .7rem; }
 .damage-cards .card .center { font-size: 1rem; padding-top: 10px; }
 .damage-cards .card .corner { font-size: .65rem; top: 3px; left: 3px; }
 .damage-cards .card .corner br { display: none; }
@@ -118,8 +119,8 @@ body {
 /* ---------- Cartas ---------- */
 .card {
   position: relative;
-  width: var(--card-w);
-  height: var(--card-h);
+  width: var(--w, var(--card-w));
+  height: var(--h, var(--card-h));
   border-radius: var(--radius);
   color: var(--card-black);
   user-select: none;
@@ -128,9 +129,17 @@ body {
   transition: transform .15s;
 }
 .card.red { color: var(--card-red); }
+
+/* Mão e área de dano ficam numa única linha: quando falta espaço, as caixas
+   das cartas encolhem e as cartas desenhadas se sobrepõem (a última fica inteira) */
+.hand .card, .damage-cards .card { flex: 0 1 var(--w, var(--card-w)); min-width: 0; }
+.hand .card:last-child, .damage-cards .card:last-child { flex-shrink: 0; }
 .card-inner {
   position: absolute;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: var(--w, var(--card-w));
   transform-style: preserve-3d;
   transition: transform .45s ease-out;
 }
@@ -174,7 +183,7 @@ body {
 .card.selected .face { box-shadow: 0 0 0 3px var(--gold), 0 6px 12px rgba(0,0,0,.4); }
 .card.face-down-own .front { opacity: .8; outline: 2px dashed var(--gold); outline-offset: -5px; }
 .card.face-down-own::before {
-  content: "oculta"; position: absolute; top: -16px; left: 0; right: 0; text-align: center;
+  content: "oculta"; position: absolute; top: -16px; left: 0; width: var(--w, var(--card-w)); text-align: center;
   font-size: .6rem; color: var(--gold); text-transform: uppercase;
 }
 
@@ -218,7 +227,10 @@ body {
 
 /* ---------- Histórico ---------- */
 .log { background: rgba(0,0,0,.25); border-radius: 12px; padding: 8px 16px; max-height: 220px; overflow-y: auto; }
+.log-header { display: flex; justify-content: space-between; align-items: center; }
 .log h2 { font-size: .9rem; margin: 4px 0 8px; color: var(--gold); }
+.log-close { display: none; font: inherit; font-size: 1.4rem; line-height: 1; padding: 2px 8px; background: none; border: none; color: var(--text); cursor: pointer; }
+.btn-log { display: none; }
 .log ol { list-style: none; margin: 0; padding: 0; font-size: .85rem; }
 .log li { padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,.07); }
 .log li.turn { color: var(--gold); font-weight: 700; margin-top: 6px; }
@@ -247,10 +259,65 @@ body {
   .card .center { font-size: 1.3rem; }
   .card .corner { font-size: .7rem; }
   .card .role-tag { display: none; }
-  .table { grid-template-columns: 1fr 1fr; }
-  .battlefield { grid-column: 1 / -1; order: -1; }
-  .hand-hidden .card { width: 30px; height: 44px; }
   .player-name { min-width: 0; }
-  .topbar h1 { font-size: 1.05rem; }
+
+  /* Tudo cabe na altura da tela: a mesa ocupa o espaço que sobrar */
+  body { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; background-attachment: scroll; }
+  .topbar { padding: 6px 10px; gap: 8px; }
+  .topbar h1 { font-size: 1rem; white-space: nowrap; }
+  .topbar-actions { gap: 6px; }
+  .topbar .btn { padding: 5px 10px; font-size: .8rem; white-space: nowrap; }
+  .board { flex: 1; width: 100%; display: flex; flex-direction: column; gap: 6px; padding: 6px 8px 8px; }
+
+  .player-area { gap: 4px; padding: 6px 8px; }
+  .player-info { gap: 8px; flex-wrap: nowrap; }
+  .player-name { font-size: .9rem; white-space: nowrap; }
+  .role { font-size: .65rem; padding: 1px 6px; }
+  .damage-meter { min-width: 0; height: 8px; }
+  .damage-text { font-size: .8rem; white-space: nowrap; }
+  #btn-play { padding: 6px 14px; font-size: .9rem; flex: none; }
+
+  .hand { min-height: calc(var(--card-h) + 14px); padding-top: 14px; gap: 4px; }
+  .hand-hidden { min-height: 0; padding-top: 0; }
+  .hand-hidden .card { --w: 26px; --h: 38px; }
+  .hand-hidden .back { border-width: 2px; }
+  .hand-hidden .back::after { font-size: .8rem; }
+
+  .damage-zone { min-height: 40px; gap: 8px; }
+  .damage-zone .zone-label { font-size: .6rem; width: 5.2em; flex: none; white-space: normal; letter-spacing: .5px; line-height: 1.2; }
+  .damage-cards { gap: 3px; }
+  .damage-cards .card { --w: 28px; --h: 40px; }
+  .damage-cards .card .center { font-size: .85rem; padding-top: 8px; }
+
+  /* Mesa numa linha só: monte | ataque VS defesa | descarte */
+  .table { flex: 1; grid-template-columns: auto 1fr auto; gap: 6px; padding: 6px; border-radius: 12px; }
+  .pile { gap: 4px; }
+  .pile-label { font-size: .65rem; text-align: center; }
+  .pile-back, .discard-pile { width: 36px; height: 52px; }
+  .discard-pile .card { --w: 36px; --h: 52px; }
+  .discard-pile .card .center { font-size: 1rem; }
+  .discard-pile .card .corner { font-size: .6rem; }
+  .discard-pile .card .corner.bottom { display: none; }
+  .pile-back::after { font-size: 1rem; }
+  .battlefield { gap: 4px; flex-wrap: nowrap; }
+  .slot { gap: 4px; min-width: 0; }
+  .slot .zone-label { font-size: .6rem; white-space: normal; text-align: center; letter-spacing: .5px; line-height: 1.2; }
+  .slot-cards { gap: 0; min-width: calc(var(--card-w) * 2 - 14px + 8px); margin-top: 12px; }
+  .slot-cards .card + .card { margin-left: -14px; }
+  .versus { font-size: .9rem; }
+
+  .status { font-size: .85rem; min-height: 2.4em; display: flex; align-items: center; justify-content: center; line-height: 1.2; }
+
+  /* Histórico vira um painel aberto pelo botão do topo */
+  .btn-log { display: inline-block; }
+  .log { display: none; position: fixed; left: 8px; right: 8px; bottom: 8px; z-index: 9; max-height: 70vh; background: rgba(10, 45, 29, .97); border: 1px solid var(--gold); box-shadow: 0 12px 32px rgba(0,0,0,.5); animation: pop-in .2s ease-out; }
+  .log-open .log { display: block; }
+  .log-header { position: sticky; top: -8px; background: rgba(10, 45, 29, 1); margin: -8px -16px 0; padding: 6px 8px 0 16px; }
+  .log-close { display: block; }
+}
+@media (max-width: 420px) {
+  .topbar h1 { font-size: .85rem; letter-spacing: 0; }
+  .topbar .btn { padding: 4px 8px; font-size: .75rem; }
+  .player-info { gap: 6px; }
 }
 .role:empty { display: none; }

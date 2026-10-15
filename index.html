@@ -10,6 +10,7 @@
   <header class="topbar">
     <h1>♠ Batalha Real ♥</h1>
     <div class="topbar-actions">
+      <button id="btn-log" class="btn btn-ghost btn-log" type="button" aria-controls="log-panel" aria-expanded="false">Histórico</button>
       <button id="btn-rules" class="btn btn-ghost" type="button">Regras</button>
       <button id="btn-new" class="btn btn-ghost" type="button">Novo jogo</button>
     </div>
@@ -76,8 +77,11 @@
       </div>
     </section>
 
-    <aside class="log">
-      <h2>Histórico</h2>
+    <aside class="log" id="log-panel">
+      <div class="log-header">
+        <h2>Histórico</h2>
+        <button class="log-close" id="btn-log-close" type="button" aria-label="Fechar histórico">×</button>
+      </div>
       <ol id="log"></ol>
     </aside>
   </main>
