@@ -24,7 +24,7 @@ Baralho de 52 cartas. Valores: A=1, 2–10, J=11, Q=12, K=13. O dano de um jogad
 **Rodada:**
 1. O atacante coloca 1 ou 2 cartas viradas para baixo.
 2. O defensor coloca 1 ou 2 cartas viradas para cima.
-3. As cartas do atacante são reveladas. Quem tem ouros escolhe o que cada ouro bloqueia, podendo somar dois ouros contra a mesma carta.
+3. As cartas do atacante são reveladas. Quem tem ouros escolhe o que cada ouro bloqueia, podendo somar dois ouros contra a mesma carta ou usar um único ouro contra duas cartas (ex.: J♦ bloqueia 8♠ + 3♠). Ouros e cartas ligados pelo bloqueio são comparados pela soma: se o ataque somado for maior, todas as cartas atacantes do grupo causam dano.
 4. Resolução:
    - ♠ do atacante x ♦ do defensor: se a espada for maior, vai para a área de dano do defensor (ouros descartados); senão todas são descartadas. Espada sem bloqueio causa dano direto.
    - ♣ do defensor x ♦ do atacante: mesma regra; paus maior vai para a área de dano do atacante. Paus sem bloqueio causa dano direto.

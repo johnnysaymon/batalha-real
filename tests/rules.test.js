@@ -90,6 +90,42 @@ test('defensor escolhe qual espada bloquear', () => {
   assert.deepStrictEqual(ids(s.players.ai.damage), ['S4']);
 });
 
+test('valete de ouros bloqueia 8 e 3 de espadas ao mesmo tempo', () => {
+  const s = baseState('human');
+  s.table.attack = [c('S', 8), c('S', 3)];
+  s.table.defense = [c('D', 11)];
+  const cl = Rules.getClashes(s);
+  const blocks = AI.chooseBlocks(cl.defense.threats, cl.defense.blockers);
+  assert.deepStrictEqual(blocks, { S8: ['D11'], S3: ['D11'] });
+  const events = Rules.resolveTurn(s, { defense: blocks });
+  assert.strictEqual(s.players.ai.damage.length, 0);
+  assert.deepStrictEqual(ids(s.discard), ['D11', 'S3', 'S8']);
+  assert.deepStrictEqual(events.map((e) => e.type), ['block']);
+});
+
+test('um ouro contra duas espadas cuja soma é maior: ambas causam dano', () => {
+  const s = baseState('human');
+  s.table.attack = [c('S', 8), c('S', 5)];
+  s.table.defense = [c('D', 11)];
+  Rules.resolveTurn(s, { defense: { S8: ['D11'], S5: ['D11'] } });
+  assert.deepStrictEqual(ids(s.players.ai.damage), ['S5', 'S8']);
+  assert.deepStrictEqual(ids(s.discard), ['D11']);
+});
+
+test('bestAssignment usa um ouro só em uma espada quando não cobre a soma', () => {
+  const map = Rules.bestAssignment([c('S', 8), c('S', 5)], [c('D', 11)]);
+  assert.deepStrictEqual(map, { S8: ['D11'] });
+});
+
+test('ouro do atacante bloqueia dois paus ao mesmo tempo', () => {
+  const s = baseState('human');
+  s.table.attack = [c('D', 12)];
+  s.table.defense = [c('C', 7), c('C', 5)];
+  Rules.resolveTurn(s, { attack: { C7: ['D12'], C5: ['D12'] } });
+  assert.strictEqual(s.players.human.damage.length, 0);
+  assert.strictEqual(s.discard.length, 3);
+});
+
 test('paus do defensor maior que ouro do atacante causa dano no atacante', () => {
   const s = baseState('human');
   s.table.attack = [c('D', 6)];

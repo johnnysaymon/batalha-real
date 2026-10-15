@@ -224,25 +224,45 @@
     $('block-title').textContent = context === 'defense'
       ? 'Defenda-se das espadas da máquina'
       : 'Proteja-se do contra-ataque (paus) da máquina';
-    $('block-hint').textContent = 'Escolha o que cada ouro bloqueia. Você pode somar dois ouros contra a mesma carta. Empate favorece o ouro.';
+    $('block-hint').textContent = 'Escolha o que cada ouro bloqueia. Você pode somar dois ouros contra a mesma carta ou usar um ouro contra duas cartas, se ele cobrir a soma delas. Empate favorece o ouro.';
     rows.innerHTML = '';
 
+    // assigned[idOuro] = ids das ameaças que esse ouro bloqueia
     const assigned = {};
     Object.keys(suggestion).forEach(function (tid) {
-      suggestion[tid].forEach(function (bid) { assigned[bid] = tid; });
+      suggestion[tid].forEach(function (bid) { (assigned[bid] = assigned[bid] || []).push(tid); });
     });
 
     const summary = document.createElement('div');
     summary.className = 'block-summary';
 
-    function updateSummary() {
-      summary.innerHTML = threats.map(function (t) {
-        const sum = blockers.reduce(function (s, b) { return s + (assigned[b.id] === t.id ? b.value : 0); }, 0);
-        const ok = sum >= t.value;
-        return Deck.cardLabel(t) + ': ' + (sum ? 'ouros ' + sum + ' → ' : 'sem bloqueio → ') +
-          '<span class="' + (ok ? 'ok">bloqueada' : 'fail">' + t.value + ' de dano') + '</span>';
-      }).join(' &nbsp;·&nbsp; ');
+    function currentMap() {
+      const map = {};
+      Object.keys(assigned).forEach(function (bid) {
+        assigned[bid].forEach(function (tid) { (map[tid] = map[tid] || []).push(bid); });
+      });
+      return map;
     }
+
+    function updateSummary() {
+      const groups = Rules.blockGroups(threats, blockers, currentMap());
+      const parts = groups.map(function (g) {
+        const sum = Rules.total(g.blockers);
+        const attack = Rules.total(g.threats);
+        const ok = sum >= attack;
+        return g.threats.map(Deck.cardLabel).join(' + ') + ': ouros ' + sum + ' → ' +
+          '<span class="' + (ok ? 'ok">bloqueada' + (g.threats.length > 1 ? 's' : '') : 'fail">' + attack + ' de dano') + '</span>';
+      });
+      threats.forEach(function (t) {
+        const inGroup = groups.some(function (g) { return g.threats.indexOf(t) >= 0; });
+        if (!inGroup) parts.push(Deck.cardLabel(t) + ': sem bloqueio → <span class="fail">' + t.value + ' de dano</span>');
+      });
+      summary.innerHTML = parts.join(' &nbsp;·&nbsp; ');
+    }
+
+    // Opções: nenhuma, cada ameaça isolada e, havendo duas, as duas ao mesmo tempo
+    const options = threats.map(function (t) { return [t]; });
+    if (threats.length > 1) options.push(threats.slice());
 
     blockers.forEach(function (b) {
       const row = document.createElement('div');
@@ -253,15 +273,15 @@
       none.value = '';
       none.textContent = 'Não usar';
       select.appendChild(none);
-      threats.forEach(function (t) {
+      options.forEach(function (group) {
         const opt = document.createElement('option');
-        opt.value = t.id;
-        opt.textContent = 'Bloquear ' + Deck.cardLabel(t);
+        opt.value = group.map(function (t) { return t.id; }).join(',');
+        opt.textContent = 'Bloquear ' + group.map(Deck.cardLabel).join(' + ');
         select.appendChild(opt);
       });
-      select.value = assigned[b.id] || '';
+      select.value = (assigned[b.id] || []).join(',');
       select.addEventListener('change', function () {
-        if (select.value) assigned[b.id] = select.value;
+        if (select.value) assigned[b.id] = select.value.split(',');
         else delete assigned[b.id];
         updateSummary();
       });
@@ -275,11 +295,7 @@
     return new Promise(function (resolve) {
       $('btn-block').onclick = function () {
         panel.classList.add('hidden');
-        const map = {};
-        Object.keys(assigned).forEach(function (bid) {
-          (map[assigned[bid]] = map[assigned[bid]] || []).push(bid);
-        });
-        resolve(map);
+        resolve(currentMap());
       };
     });
   }

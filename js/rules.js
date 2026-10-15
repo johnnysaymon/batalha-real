@@ -93,49 +93,84 @@
     };
   }
 
-  // Todas as formas de distribuir os ouros entre as ameaças (cada ouro: nenhuma ou uma ameaça)
+  // Todas as formas de distribuir os ouros entre as ameaças. Cada ouro bloqueia
+  // nenhuma, uma ou várias ameaças (desde que o seu valor cubra a soma delas).
   function enumerateAssignments(threats, blockers) {
     const results = [];
-    const choice = new Array(blockers.length).fill(-1);
+    const subsets = 1 << threats.length;
+    const choice = new Array(blockers.length).fill(0);
     (function rec(i) {
       if (i === blockers.length) {
         const map = {};
-        choice.forEach(function (t, bi) {
-          if (t < 0) return;
-          const tid = threats[t].id;
-          (map[tid] = map[tid] || []).push(blockers[bi].id);
+        choice.forEach(function (mask, bi) {
+          threats.forEach(function (t, ti) {
+            if (mask & (1 << ti)) (map[t.id] = map[t.id] || []).push(blockers[bi].id);
+          });
         });
         results.push(map);
         return;
       }
-      for (let t = -1; t < threats.length; t++) {
-        choice[i] = t;
+      for (let mask = 0; mask < subsets; mask++) {
+        choice[i] = mask;
         rec(i + 1);
       }
     })(0);
     return results;
   }
 
+  // Agrupa ameaças e ouros ligados pelo mapa de bloqueios. Em cada grupo, os ouros
+  // somados enfrentam as ameaças somadas (ex.: J♦ contra 8♠ + 3♠).
+  function blockGroups(threats, blockers, map) {
+    const groups = [];
+    const groupOf = {};
+    threats.forEach(function (t) {
+      (map[t.id] || []).forEach(function (bid) {
+        const b = blockers.find(function (x) { return x.id === bid; });
+        if (!b) return;
+        let g = groupOf[t.id] || groupOf[b.id];
+        const other = groupOf[t.id] && groupOf[b.id] && groupOf[t.id] !== groupOf[b.id] ? groupOf[b.id] : null;
+        if (!g) {
+          g = { threats: [], blockers: [] };
+          groups.push(g);
+        }
+        if (other) {
+          other.threats.forEach(function (x) { g.threats.push(x); groupOf[x.id] = g; });
+          other.blockers.forEach(function (x) { g.blockers.push(x); groupOf[x.id] = g; });
+          groups.splice(groups.indexOf(other), 1);
+        }
+        if (!groupOf[t.id]) { g.threats.push(t); groupOf[t.id] = g; }
+        if (!groupOf[b.id]) { g.blockers.push(b); groupOf[b.id] = g; }
+      });
+    });
+    // Mantém a ordem original das cartas dentro de cada grupo
+    groups.forEach(function (g) {
+      g.threats.sort(function (a, b) { return threats.indexOf(a) - threats.indexOf(b); });
+      g.blockers.sort(function (a, b) { return blockers.indexOf(a) - blockers.indexOf(b); });
+    });
+    return groups;
+  }
+
   function preventedDamage(threats, blockers, map) {
     let prevented = 0;
     let used = 0;
-    threats.forEach(function (t) {
-      const ids = map[t.id] || [];
-      const sum = total(blockers.filter(function (b) { return ids.indexOf(b.id) >= 0; }));
-      used += ids.length;
-      if (ids.length && sum >= t.value) prevented += t.value;
+    let links = 0;
+    blockGroups(threats, blockers, map).forEach(function (g) {
+      used += g.blockers.length;
+      if (total(g.blockers) >= total(g.threats)) prevented += total(g.threats);
     });
-    return { prevented: prevented, used: used };
+    Object.keys(map).forEach(function (tid) { links += map[tid].length; });
+    return { prevented: prevented, used: used, links: links };
   }
 
   // Melhor distribuição: maximiza o dano evitado usando o mínimo de ouros
   function bestAssignment(threats, blockers) {
     let best = {};
-    let bestScore = { prevented: -1, used: 0 };
+    let bestScore = { prevented: -1, used: 0, links: 0 };
     enumerateAssignments(threats, blockers).forEach(function (map) {
       const s = preventedDamage(threats, blockers, map);
       if (s.prevented > bestScore.prevented ||
-          (s.prevented === bestScore.prevented && s.used < bestScore.used)) {
+          (s.prevented === bestScore.prevented && s.used < bestScore.used) ||
+          (s.prevented === bestScore.prevented && s.used === bestScore.used && s.links < bestScore.links)) {
         best = map;
         bestScore = s;
       }
@@ -164,23 +199,29 @@
   function resolveClash(threats, blockers, map, victimId, state, events) {
     const victim = state.players[victimId];
     const used = new Set();
-    threats.forEach(function (threat) {
-      const ids = map[threat.id] || [];
-      const bl = blockers.filter(function (b) { return ids.indexOf(b.id) >= 0 && !used.has(b.id); });
-      bl.forEach(function (b) { used.add(b.id); });
-      const sum = total(bl);
-      if (bl.length === 0) {
-        victim.damage.push(threat);
-        events.push({ type: 'hit', text: label(threat) + ' não foi bloqueada: ' + threat.value + ' de dano em ' + NAMES[victimId] + '.' });
-      } else if (threat.value > sum) {
-        victim.damage.push(threat);
-        state.discard.push.apply(state.discard, bl);
-        events.push({ type: 'hit', text: label(threat) + ' rompeu a defesa ' + labels(bl) + ' (' + sum + '): ' + threat.value + ' de dano em ' + NAMES[victimId] + '.' });
+    const grouped = new Set();
+    blockGroups(threats, blockers, map).forEach(function (g) {
+      g.blockers.forEach(function (b) { used.add(b.id); });
+      g.threats.forEach(function (t) { grouped.add(t.id); });
+      const sum = total(g.blockers);
+      const attack = total(g.threats);
+      const many = g.threats.length > 1;
+      if (attack > sum) {
+        victim.damage.push.apply(victim.damage, g.threats);
+        state.discard.push.apply(state.discard, g.blockers);
+        events.push({ type: 'hit', text: labels(g.threats) + (many ? ' (' + attack + ') romperam' : ' rompeu') +
+          ' a defesa ' + labels(g.blockers) + ' (' + sum + '): ' + attack + ' de dano em ' + NAMES[victimId] + '.' });
       } else {
-        state.discard.push(threat);
-        state.discard.push.apply(state.discard, bl);
-        events.push({ type: 'block', text: labels(bl) + ' (' + sum + ') bloqueou ' + label(threat) + '. Cartas descartadas.' });
+        state.discard.push.apply(state.discard, g.threats);
+        state.discard.push.apply(state.discard, g.blockers);
+        events.push({ type: 'block', text: labels(g.blockers) + ' (' + sum + ') bloqueou ' + labels(g.threats) +
+          (many ? ' (' + attack + ')' : '') + '. Cartas descartadas.' });
       }
+    });
+    threats.forEach(function (threat) {
+      if (grouped.has(threat.id)) return;
+      victim.damage.push(threat);
+      events.push({ type: 'hit', text: label(threat) + ' não foi bloqueada: ' + threat.value + ' de dano em ' + NAMES[victimId] + '.' });
     });
     blockers.forEach(function (b) {
       if (!used.has(b.id)) {
@@ -240,16 +281,15 @@
     events.push({ type: 'heal', text: source + ' recuperou ' + total(plan.removed) + ' de dano de ' + NAMES[playerId] + ' (' + labels(plan.removed) + ').' });
   }
 
+  // Remove ids inválidos e repetidos. Um mesmo ouro pode bloquear várias ameaças.
   function sanitize(map, clash) {
     const out = {};
-    const seen = new Set();
     const threatIds = clash.threats.map(function (c) { return c.id; });
     const blockerIds = clash.blockers.map(function (c) { return c.id; });
     Object.keys(map || {}).forEach(function (tid) {
       if (threatIds.indexOf(tid) < 0) return;
       (map[tid] || []).forEach(function (bid) {
-        if (blockerIds.indexOf(bid) < 0 || seen.has(bid)) return;
-        seen.add(bid);
+        if (blockerIds.indexOf(bid) < 0 || (out[tid] && out[tid].indexOf(bid) >= 0)) return;
         (out[tid] = out[tid] || []).push(bid);
       });
     });
@@ -351,6 +391,7 @@
     playCards: playCards,
     getClashes: getClashes,
     enumerateAssignments: enumerateAssignments,
+    blockGroups: blockGroups,
     bestAssignment: bestAssignment,
     bestHeal: bestHeal,
     planHeal: planHeal,
