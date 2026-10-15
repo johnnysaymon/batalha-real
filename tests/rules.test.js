@@ -124,23 +124,33 @@ test('copas sem dano é descartada', () => {
   assert.deepStrictEqual(ids(s.discard), ['H10', 'H3']);
 });
 
-test('copas remove cartas de dano com soma menor que seu valor', () => {
+test('copas remove cartas de dano com soma menor ou igual ao seu valor', () => {
   const s = baseState('human');
   s.players.human.damage = [c('S', 5), c('C', 4), c('S', 9)];
   s.table.attack = [c('H', 10)];
   s.table.defense = [c('D', 1)];
   Rules.resolveTurn(s, {});
-  // melhor soma < 10: 9 (S9) ou 5+4 = 9 → remove 9 pontos
+  // melhor soma ≤ 10: 9 (S9) ou 5+4 = 9 → remove 9 pontos
   assert.strictEqual(Rules.total(s.players.human.damage), 9);
 });
 
-test('copas não supera nenhuma carta de dano: nada removido', () => {
+test('valete de copas recupera valete de paus na rodada de defesa', () => {
   const s = baseState('ai');
-  s.players.human.damage = [c('S', 8)];
+  s.players.human.damage = [c('C', 11)];
+  s.table.attack = [c('D', 2)];
+  s.table.defense = [c('H', 11)];
+  Rules.resolveTurn(s, {});
+  assert.strictEqual(s.players.human.damage.length, 0);
+  assert.deepStrictEqual(ids(s.discard), ['C11', 'D2', 'H11']);
+});
+
+test('copas não alcança nenhuma carta de dano: nada removido', () => {
+  const s = baseState('ai');
+  s.players.human.damage = [c('S', 9)];
   s.table.attack = [c('D', 2)];
   s.table.defense = [c('H', 8)];
   Rules.resolveTurn(s, {});
-  assert.strictEqual(Rules.total(s.players.human.damage), 8);
+  assert.strictEqual(Rules.total(s.players.human.damage), 9);
 });
 
 test('copas cura dano recebido na mesma rodada', () => {

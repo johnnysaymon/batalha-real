@@ -143,9 +143,9 @@
     return best;
   }
 
-  // Maior conjunto de cartas de dano cuja soma seja MENOR que o valor da copas
+  // Maior conjunto de cartas de dano cuja soma seja MENOR OU IGUAL ao valor da copas
   function bestHeal(damageCards, heartValue) {
-    const limit = heartValue - 1;
+    const limit = heartValue;
     if (limit <= 0) return [];
     // dp[s] = índices das cartas que somam exatamente s
     const dp = new Array(limit + 1).fill(null);
@@ -190,7 +190,7 @@
     });
   }
 
-  // Cura carta a carta: cada copas remove cartas cuja soma seja menor que seu valor
+  // Cura carta a carta: cada copas remove cartas cuja soma seja menor ou igual ao seu valor
   function sequentialHeal(hearts, damage) {
     let remaining = damage.slice();
     const removed = [];
@@ -231,7 +231,7 @@
     }
     const plan = planHeal(hearts, player.damage);
     if (plan.removed.length === 0) {
-      events.push({ type: 'discard', text: labels(hearts) + ' de ' + NAMES[playerId] + ' não supera(m) nenhuma carta de dano e foi(ram) descartada(s).' });
+      events.push({ type: 'discard', text: labels(hearts) + ' de ' + NAMES[playerId] + ' não alcança(m) nenhuma carta de dano e foi(ram) descartada(s).' });
       return;
     }
     player.damage = player.damage.filter(function (c) { return plan.removed.indexOf(c) < 0; });
