@@ -253,6 +253,49 @@ body {
 
 .hidden { display: none !important; }
 
+/* ---------- Tela inicial ---------- */
+body.on-start { overflow: hidden; }
+.start-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background-color: var(--felt);
+  background-image: radial-gradient(ellipse at center, var(--felt-light) 0%, var(--felt) 55%, var(--felt-dark) 100%);
+  animation: fade-in .3s ease-out;
+}
+.start-box { text-align: center; max-width: 480px; width: 100%; }
+.start-suits { display: flex; justify-content: center; gap: 10px; margin-bottom: 8px; }
+.start-suits span {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 76px;
+  font-size: 2rem;
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  box-shadow: 0 4px 10px rgba(0,0,0,.35);
+}
+.start-suits span:nth-child(1) { transform: rotate(-12deg) translateY(6px); }
+.start-suits span:nth-child(2) { transform: rotate(-4deg); }
+.start-suits span:nth-child(3) { transform: rotate(4deg); }
+.start-suits span:nth-child(4) { transform: rotate(12deg) translateY(6px); }
+.start-suits .black { color: var(--card-black); }
+.start-suits .red { color: var(--card-red); }
+.start-title {
+  margin: 16px 0 4px;
+  font-size: clamp(2.4rem, 11vw, 4rem);
+  color: var(--gold);
+  letter-spacing: 2px;
+  text-shadow: 0 3px 0 rgba(0,0,0,.35);
+}
+.start-subtitle { margin: 0 0 28px; color: var(--muted); font-size: 1.05rem; }
+.start-actions { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.btn-big { font-size: 1.1rem; padding: 12px 28px; min-width: 220px; }
+
 /* ---------- Responsivo ---------- */
 @media (max-width: 700px) {
   :root { --card-w: 48px; --card-h: 70px; }

@@ -137,8 +137,8 @@
     run(id);
   }
 
-  UI.init({ onNewGame: newGame });
-  newGame();
+  // A partida só começa quando o jogador sai da tela inicial
+  UI.init({ onNewGame: newGame, onStart: newGame });
 
   root.BR.Game = { getState: function () { return state; }, newGame: newGame };
 })(window);

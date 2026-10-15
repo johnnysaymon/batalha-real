@@ -389,6 +389,13 @@
     $('btn-new').addEventListener('click', handlers.onNewGame);
     $('btn-log').addEventListener('click', function () { toggleLog(); });
     $('btn-log-close').addEventListener('click', function () { toggleLog(false); });
+    $('btn-howto').addEventListener('click', showRules);
+    $('btn-start').addEventListener('click', function () {
+      $('start-screen').classList.add('hidden');
+      document.body.classList.remove('on-start');
+      handlers.onStart();
+    });
+    $('btn-start').focus();
   }
 
   root.BR = root.BR || {};

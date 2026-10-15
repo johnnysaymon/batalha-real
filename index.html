@@ -6,7 +6,21 @@
   <title>Batalha Real</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
+<body class="on-start">
+  <section class="start-screen" id="start-screen" aria-labelledby="start-title">
+    <div class="start-box">
+      <div class="start-suits" aria-hidden="true">
+        <span class="black">♠</span><span class="red">♥</span><span class="black">♣</span><span class="red">♦</span>
+      </div>
+      <h1 class="start-title" id="start-title">Batalha Real</h1>
+      <p class="start-subtitle">Duelo de cartas: você contra a máquina</p>
+      <div class="start-actions">
+        <button id="btn-start" class="btn btn-big" type="button">Iniciar jogo</button>
+        <button id="btn-howto" class="btn btn-ghost btn-big" type="button">Como jogar</button>
+      </div>
+    </div>
+  </section>
+
   <header class="topbar">
     <h1>♠ Batalha Real ♥</h1>
     <div class="topbar-actions">
