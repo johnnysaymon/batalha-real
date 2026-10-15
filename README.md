@@ -6,6 +6,8 @@ Jogo de cartas para navegador feito apenas com HTML, CSS e JavaScript — você 
 
 Abra `index.html` em qualquer navegador moderno (não precisa de servidor nem de instalação).
 
+Quando servido por HTTPS (ex.: https://batalhareal.saymon.dev), o jogo pode ser instalado como aplicativo pelo menu do navegador ("Instalar aplicativo" / "Adicionar à tela inicial") e funciona offline.
+
 ## Regras
 
 Objetivo: fazer o adversário acumular **30 pontos de dano**.
@@ -44,6 +46,10 @@ js/rules.js       regras (lógica pura, sem DOM)
 js/ai.js          decisões da máquina
 js/ui.js          renderização e interação
 js/game.js        fluxo da partida
+manifest.webmanifest  dados do aplicativo instalável
+sw.js             service worker (cache para uso offline)
+icons/            ícones do app, baseados no verso da carta
+favicon.ico       ícone da aba
 tests/            testes das regras
 ```
 
