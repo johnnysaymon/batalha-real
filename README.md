@@ -50,6 +50,7 @@ manifest.webmanifest  dados do aplicativo instalável
 sw.js             service worker (cache para uso offline)
 icons/            ícones do app, baseados no verso da carta
 favicon.ico       ícone da aba
+apple-touch-icon*.png  ícone da tela inicial do iPhone (cópia na raiz, onde o iOS procura)
 tests/            testes das regras
 ```
 

@@ -1,6 +1,6 @@
 /* Service worker: guarda os arquivos do jogo para funcionar offline */
 'use strict';
-const CACHE = 'batalha-real-v1';
+const CACHE = 'batalha-real-v2';
 const ARQUIVOS = [
   './',
   'index.html',
@@ -16,7 +16,9 @@ const ARQUIVOS = [
   'icons/icon-192.png',
   'icons/icon-512.png',
   'icons/icon-maskable-512.png',
-  'icons/apple-touch-icon.png'
+  'icons/apple-touch-icon.png',
+  'apple-touch-icon.png',
+  'apple-touch-icon-precomposed.png'
 ];
 
 self.addEventListener('install', (e) => {
