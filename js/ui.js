@@ -327,22 +327,25 @@
     if (typeof entry.body === 'string') content.innerHTML = entry.body;
     else content.appendChild(entry.body);
     $('modal-ok').textContent = entry.okText || 'OK';
+    $('modal-close').textContent = entry.closeText || '';
+    $('modal-close').classList.toggle('hidden', !entry.closeText);
     $('modal').classList.remove('hidden');
   }
 
-  function showModal(title, body, okText) {
+  // Resolve com true se o jogador confirmar e false se usar o botão de fechar
+  function showModal(title, body, okText, closeText) {
     return new Promise(function (resolve) {
-      const entry = { title: title, body: body, okText: okText, resolve: resolve };
+      const entry = { title: title, body: body, okText: okText, closeText: closeText, resolve: resolve };
       modalStack.push(entry);
       paintModal(entry);
     });
   }
 
-  function hideModal() {
+  function hideModal(confirmed) {
     const entry = modalStack.pop();
     if (modalStack.length) paintModal(modalStack[modalStack.length - 1]);
     else $('modal').classList.add('hidden');
-    if (entry) entry.resolve();
+    if (entry) entry.resolve(confirmed !== false);
   }
 
   function closeAllModals() {
@@ -384,7 +387,8 @@
 
   function init(handlers) {
     $('btn-play').addEventListener('click', confirmPlay);
-    $('modal-ok').addEventListener('click', hideModal);
+    $('modal-ok').addEventListener('click', function () { hideModal(true); });
+    $('modal-close').addEventListener('click', function () { hideModal(false); });
     $('btn-rules').addEventListener('click', showRules);
     $('btn-new').addEventListener('click', handlers.onNewGame);
     $('btn-log').addEventListener('click', function () { toggleLog(); });

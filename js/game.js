@@ -117,10 +117,11 @@
     UI.setStatus(title + ' — Você sofreu ' + h + ', a máquina sofreu ' + a + '.');
     UI.log(title + ' ' + reason, 'end');
     UI.render(state);
-    await UI.showModal(title,
+    const again = await UI.showModal(title,
       '<p>' + reason + '</p><p>Dano sofrido — Você: <strong>' + h + '</strong> · Máquina: <strong>' + a + '</strong></p>',
-      'Jogar novamente');
-    if (id === gameId) newGame();
+      'Jogar novamente', 'Fechar');
+    // Fechar mantém a mesa e o histórico à vista; "Novo jogo" no topo inicia outra partida
+    if (again && id === gameId) newGame();
   }
 
   async function newGame() {
